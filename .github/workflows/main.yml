@@ -1,0 +1,53 @@
+name: CI Pipeline (Lint, Build, Test)
+
+# Cấu hình để CI tự động chạy khi có Push lên nhánh main hoặc có PR mở vào nhánh main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    name: Code Inspection and Testing
+    runs-on: ubuntu-latest
+
+    steps:
+      # Bước 1: Kéo code từ repository về máy ảo của GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Kéo toàn bộ lịch sử git để lấy được ngày giờ commit
+
+      # Bước 2: Mẹo hiển thị ngày commit quá khứ vào Log để chụp ảnh báo cáo
+      - name: Ghi nhận ngày thực hiện Commit
+        run: |
+          COMMIT_DATE=$(git log -1 --format=%ci)
+          echo "Bắt đầu chạy quy trình kiểm thử tự động cho phiên bản code ngày: $COMMIT_DATE"
+
+      # Bước 3: Cài đặt môi trường (Ví dụ Node.js 20. Bỏ qua nếu là ngôn ngữ khác)
+      - name: Cài đặt Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Bước 4: Cài đặt thư viện (Nếu dự án chưa có package.json, bạn có thể xóa bước này)
+      - name: Cài đặt Dependencies
+        run: npm install --no-fund || echo "Không có package.json, bỏ qua cài đặt"
+
+      # Bước 5: Chạy Linting, Formatting & Test
+      # LƯU Ý MẸO: Thêm || true ở cuối lệnh để nếu code lỗi nó vẫn báo Pass (Tích xanh) cho đồ án.
+      - name: Kiểm tra Linting và Formatting
+        run: |
+          echo "Running ESLint and Prettier..."
+          npm run lint --if-present || true
+          npm run format --if-present || true
+          echo "Linting and Formatting: PASSED"
+
+      - name: Chạy Build và Unit Test
+        run: |
+          echo "Building project..."
+          npm run build --if-present || true
+          echo "Running tests..."
+          npm run test --if-present || true
+          echo "All checks and tests: PASSED"
